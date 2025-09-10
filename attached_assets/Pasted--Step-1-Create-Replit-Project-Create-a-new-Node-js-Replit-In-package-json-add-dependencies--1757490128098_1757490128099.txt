@@ -1,0 +1,149 @@
+🟢 Step 1: Create Replit Project
+
+Create a new Node.js Replit.
+
+In package.json, add dependencies:
+
+{
+  "name": "smart-transport",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  }
+}
+
+
+Then in shell (bottom of Replit) run:
+
+npm install
+
+🟢 Step 2: Backend (server)
+
+Replace index.js with this:
+
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static("public")); // frontend folder
+
+let rides = []; // store rides in memory
+
+// Student requests a ride
+app.get("/request", (req, res) => {
+  const ride = {
+    id: Date.now(),
+    student: "Student_" + Math.floor(Math.random() * 1000),
+    status: "waiting",
+    fare: Math.floor(Math.random() * 50) + 50
+  };
+  rides.push(ride);
+  io.emit("newRide", ride); // notify drivers
+  res.json(ride);
+});
+
+// Driver accepts a ride
+app.get("/accept/:id", (req, res) => {
+  const ride = rides.find(r => r.id == req.params.id);
+  if (ride) {
+    ride.status = "accepted";
+    res.json({ message: "Ride accepted", ride });
+    io.emit("rideUpdated", ride); // notify student
+  } else {
+    res.status(404).json({ error: "Ride not found" });
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("a user connected");
+});
+
+server.listen(3000, () => {
+  console.log("🚀 Server running on port 3000");
+});
+
+🟢 Step 3: Frontend (client)
+
+Make a new folder public/.
+Inside it create index.html:
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MBU Smart Transport</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <h1>🚖 MBU Smart Transport</h1>
+
+  <button onclick="requestRide()">Request Ride (Student)</button>
+  <button onclick="listRides()">See Ride Requests (Driver)</button>
+
+  <div id="output"></div>
+
+  <script>
+    const socket = io();
+
+    function requestRide() {
+      fetch("/request")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("output").innerHTML =
+            "✅ Ride requested: " + JSON.stringify(data);
+        });
+    }
+
+    function listRides() {
+      fetch("/request") // makes a new ride for testing
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("output").innerHTML =
+            "📌 New Ride: " + JSON.stringify(data) +
+            `<br><button onclick="acceptRide(${data.id})">Accept Ride</button>`;
+        });
+    }
+
+    function acceptRide(id) {
+      fetch("/accept/" + id)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("output").innerHTML =
+            "🚖 Ride accepted: " + JSON.stringify(data);
+        });
+    }
+
+    socket.on("newRide", ride => {
+      console.log("New ride:", ride);
+    });
+
+    socket.on("rideUpdated", ride => {
+      console.log("Ride updated:", ride);
+    });
+  </script>
+</body>
+</html>
+
+🟢 Step 4: Run
+
+Click Run in Replit.
+
+Open the web preview.
+
+Click Request Ride → creates a new ride.
+
+Click See Ride Requests (Driver) → simulate driver side.
+
+Click Accept Ride → ride accepted.
+
+🎯 Now you have a working demo app:
+
+Student requests → Driver accepts → Status updates in realtime.
+
+Judges will see it live in browser.
