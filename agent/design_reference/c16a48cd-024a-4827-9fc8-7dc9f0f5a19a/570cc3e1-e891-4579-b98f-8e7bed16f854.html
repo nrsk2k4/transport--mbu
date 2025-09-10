@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBU Smart Transport - Ride Sharing Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    chart: {
+                        "1": "var(--chart-1)",
+                        "2": "var(--chart-2)",
+                        "3": "var(--chart-3)",
+                        "4": "var(--chart-4)",
+                        "5": "var(--chart-5)",
+                    }
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                    serif: ["var(--font-serif)"],
+                    mono: ["var(--font-mono)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(220 20% 97%);
+            --foreground: hsl(220 20% 10%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(220 20% 10%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(220 20% 10%);
+            --primary: hsl(207 90% 54%);
+            --primary-foreground: hsl(0 0% 98%);
+            --secondary: hsl(36 100% 50%);
+            --secondary-foreground: hsl(0 0% 98%);
+            --muted: hsl(220 14% 96%);
+            --muted-foreground: hsl(220 14% 40%);
+            --accent: hsl(120 61% 50%);
+            --accent-foreground: hsl(0 0% 98%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(0 0% 98%);
+            --border: hsl(220 13% 91%);
+            --input: hsl(220 13% 91%);
+            --ring: hsl(207 90% 54%);
+            --radius: 8px;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --chart-1: hsl(207 90% 54%);
+            --chart-2: hsl(36 100% 50%);
+            --chart-3: hsl(120 61% 50%);
+            --chart-4: hsl(280 65% 60%);
+            --chart-5: hsl(12 76% 61%);
+        }
+        body { font-family: var(--font-sans); }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-background text-foreground min-h-screen">
+    <!-- @COMPONENT: Header -->
+    <header class="bg-card border-b border-border shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-car text-primary-foreground text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-foreground">MBU Smart Transport</h1>
+                        <p class="text-sm text-muted-foreground">Campus Ride Sharing Platform</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- @STATE: connectionStatus:string = 'connected' -->
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-accent rounded-full" data-bind="connectionStatus === 'connected'"></div>
+                        <span class="text-sm text-muted-foreground">Live</span>
+                    </div>
+                    <!-- @COMPONENT: UserMenu -->
+                    <div class="flex items-center space-x-2 bg-muted px-3 py-2 rounded-lg">
+                        <i class="fas fa-user text-muted-foreground"></i>
+                        <span class="text-sm font-medium" data-bind="currentUser.name" data-mock="true">User_247</span>
+                    </div>
+                    <!-- @END_COMPONENT: UserMenu -->
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        <!-- @COMPONENT: RoleSelector -->
+        <div class="mb-8">
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm">
+                <h2 class="text-lg font-semibold mb-4">Select Your Role</h2>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <!-- @STATE: activeRole:string = 'student' -->
+                    <button 
+                        class="flex-1 p-4 border-2 border-primary bg-primary/5 rounded-lg transition-all duration-200 hover:bg-primary/10" 
+                        data-event="click:setRole('student')"
+                        data-bind="activeRole === 'student' ? 'border-primary bg-primary/5' : 'border-border bg-card'"
+                        id="studentRoleBtn">
+                        <div class="flex items-center justify-center space-x-3">
+                            <i class="fas fa-graduation-cap text-primary text-2xl"></i>
+                            <div class="text-left">
+                                <h3 class="font-semibold text-foreground">Student</h3>
+                                <p class="text-sm text-muted-foreground">Request rides to campus locations</p>
+                            </div>
+                        </div>
+                    </button>
+                    
+                    <button 
+                        class="flex-1 p-4 border-2 border-border bg-card rounded-lg transition-all duration-200 hover:bg-muted" 
+                        data-event="click:setRole('driver')"
+                        data-bind="activeRole === 'driver' ? 'border-secondary bg-secondary/5' : 'border-border bg-card'"
+                        id="driverRoleBtn">
+                        <div class="flex items-center justify-center space-x-3">
+                            <i class="fas fa-steering-wheel text-secondary text-2xl"></i>
+                            <div class="text-left">
+                                <h3 class="font-semibold text-foreground">Driver</h3>
+                                <p class="text-sm text-muted-foreground">Accept and complete ride requests</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: RoleSelector -->
+
+        <!-- @COMPONENT: StudentInterface -->
+        <div id="studentInterface" class="space-y-6">
+            <!-- Request Ride Section -->
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Request a Ride</h2>
+                    <i class="fas fa-plus-circle text-primary text-xl"></i>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Pickup Location</label>
+                        <div class="relative">
+                            <input type="text" placeholder="Enter pickup location" 
+                                   class="w-full px-4 py-3 pl-10 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                                   data-mock="true" value="Student Dormitory A">
+                            <i class="fas fa-map-marker-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Destination</label>
+                        <div class="relative">
+                            <input type="text" placeholder="Enter destination" 
+                                   class="w-full px-4 py-3 pl-10 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-background"
+                                   data-mock="true" value="Main Campus Library">
+                            <i class="fas fa-flag-checkered absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <button 
+                    class="w-full bg-primary text-primary-foreground py-3 px-6 rounded-lg font-semibold hover:bg-primary/90 transition-colors duration-200 flex items-center justify-center space-x-2"
+                    data-event="click:requestRide()"
+                    data-implementation="Should validate form and create ride request">
+                    <i class="fas fa-car"></i>
+                    <span>Request Ride Now</span>
+                </button>
+            </div>
+
+            <!-- Current Ride Status -->
+            <!-- @STATE: currentRide:object|null = null -->
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm" id="currentRideStatus">
+                <h3 class="text-lg font-semibold mb-4">Current Ride Status</h3>
+                
+                <!-- @CONDITIONAL: If no active ride -->
+                <div class="text-center py-8 text-muted-foreground" data-bind="!currentRide" data-mock="true">
+                    <i class="fas fa-clock text-4xl mb-3"></i>
+                    <p>No active ride requests</p>
+                </div>
+                
+                <!-- @CONDITIONAL: If active ride exists -->
+                <div class="hidden" data-bind="currentRide" data-mock="true">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-car text-secondary"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold" data-bind="currentRide.driverName">Driver John D.</h4>
+                                <p class="text-sm text-muted-foreground">Toyota Camry • ABC-123</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-secondary/10 text-secondary">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span data-bind="currentRide.status">En Route</span>
+                            </div>
+                            <p class="text-lg font-bold text-foreground mt-1" data-bind="'$' + currentRide.fare">$68</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Rides -->
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm">
+                <h3 class="text-lg font-semibold mb-4">Recent Rides</h3>
+                
+                <!-- @MAP: recentRides.map(ride => ( -->
+                <div class="space-y-3" data-mock="true">
+                    <div class="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-accent text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">Dormitory A → Library</p>
+                                <p class="text-xs text-muted-foreground">Oct 15, 2:30 PM</p>
+                            </div>
+                        </div>
+                        <span class="text-sm font-semibold">$52</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-accent text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">Campus Center → Dormitory B</p>
+                                <p class="text-xs text-muted-foreground">Oct 14, 6:45 PM</p>
+                            </div>
+                        </div>
+                        <span class="text-sm font-semibold">$43</span>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+            </div>
+        </div>
+        <!-- @END_COMPONENT: StudentInterface -->
+
+        <!-- @COMPONENT: DriverInterface -->
+        <div id="driverInterface" class="space-y-6 hidden">
+            <!-- Driver Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-card rounded-lg p-4 border border-border shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-muted-foreground">Today's Earnings</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="todayEarnings" data-mock="true">$247</p>
+                        </div>
+                        <i class="fas fa-dollar-sign text-accent text-2xl"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-card rounded-lg p-4 border border-border shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-muted-foreground">Rides Completed</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="ridesCompleted" data-mock="true">12</p>
+                        </div>
+                        <i class="fas fa-check-circle text-accent text-2xl"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-card rounded-lg p-4 border border-border shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-muted-foreground">Rating</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="driverRating" data-mock="true">4.9</p>
+                        </div>
+                        <i class="fas fa-star text-secondary text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Rides -->
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Available Ride Requests</h2>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
+                        <span class="text-sm text-muted-foreground">Live Updates</span>
+                    </div>
+                </div>
+                
+                <!-- @STATE: availableRides:array = [] -->
+                <!-- @MAP: availableRides.map(ride => ( -->
+                <div class="space-y-4" data-mock="true">
+                    <div class="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors duration-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-primary text-sm"></i>
+                                    </div>
+                                    <span class="font-medium" data-bind="ride.studentName" data-mock="true">Student_247</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Waiting
+                                    </span>
+                                </div>
+                                
+                                <div class="space-y-2 mb-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <i class="fas fa-map-marker-alt text-muted-foreground w-4"></i>
+                                        <span data-bind="ride.pickup" data-mock="true">Student Dormitory A</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <i class="fas fa-flag-checkered text-muted-foreground w-4"></i>
+                                        <span data-bind="ride.destination" data-mock="true">Main Campus Library</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="text-sm text-muted-foreground">
+                                        <i class="fas fa-route mr-1"></i>
+                                        <span data-bind="ride.distance" data-mock="true">2.3 km</span> • 
+                                        <span data-bind="ride.duration" data-mock="true">8 min</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold text-foreground" data-bind="'$' + ride.fare" data-mock="true">$68</p>
+                                        <p class="text-xs text-muted-foreground">Estimated fare</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-3 mt-4">
+                            <button 
+                                class="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors duration-200 flex items-center justify-center space-x-2"
+                                data-event="click:acceptRide(ride.id)"
+                                data-implementation="Should accept ride and notify student">
+                                <i class="fas fa-check"></i>
+                                <span>Accept Ride</span>
+                            </button>
+                            <button 
+                                class="px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors duration-200"
+                                data-event="click:viewRideDetails(ride.id)">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors duration-200">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-user text-primary text-sm"></i>
+                                    </div>
+                                    <span class="font-medium" data-mock="true">Student_892</span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Waiting
+                                    </span>
+                                </div>
+                                
+                                <div class="space-y-2 mb-3">
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <i class="fas fa-map-marker-alt text-muted-foreground w-4"></i>
+                                        <span data-mock="true">Campus Center</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2 text-sm">
+                                        <i class="fas fa-flag-checkered text-muted-foreground w-4"></i>
+                                        <span data-mock="true">Sports Complex</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div class="text-sm text-muted-foreground">
+                                        <i class="fas fa-route mr-1"></i>
+                                        <span data-mock="true">1.8 km</span> • 
+                                        <span data-mock="true">6 min</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-lg font-bold text-foreground" data-mock="true">$54</p>
+                                        <p class="text-xs text-muted-foreground">Estimated fare</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-3 mt-4">
+                            <button 
+                                class="flex-1 bg-primary text-primary-foreground py-2 px-4 rounded-lg font-medium hover:bg-primary/90 transition-colors duration-200 flex items-center justify-center space-x-2"
+                                data-event="click:acceptRide(ride.id)"
+                                data-implementation="Should accept ride and notify student">
+                                <i class="fas fa-check"></i>
+                                <span>Accept Ride</span>
+                            </button>
+                            <button 
+                                class="px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors duration-200"
+                                data-event="click:viewRideDetails(ride.id)">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+                
+                <!-- @CONDITIONAL: No available rides -->
+                <div class="text-center py-8 text-muted-foreground hidden" data-bind="availableRides.length === 0">
+                    <i class="fas fa-car text-4xl mb-3"></i>
+                    <p>No ride requests available</p>
+                    <p class="text-sm">New requests will appear here automatically</p>
+                </div>
+            </div>
+
+            <!-- Active Ride -->
+            <!-- @STATE: activeRide:object|null = null -->
+            <div class="bg-card rounded-lg p-6 border border-border shadow-sm" id="activeRide">
+                <h3 class="text-lg font-semibold mb-4">Active Ride</h3>
+                
+                <!-- @CONDITIONAL: No active ride -->
+                <div class="text-center py-8 text-muted-foreground" data-bind="!activeRide" data-mock="true">
+                    <i class="fas fa-steering-wheel text-4xl mb-3"></i>
+                    <p>No active rides</p>
+                </div>
+                
+                <!-- @CONDITIONAL: Active ride exists -->
+                <div class="hidden" data-bind="activeRide" data-mock="true">
+                    <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-primary"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold" data-bind="activeRide.studentName">Student_247</h4>
+                                    <p class="text-sm text-muted-foreground">Pickup requested 5 min ago</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent">
+                                    <i class="fas fa-route mr-2"></i>
+                                    <span data-bind="activeRide.status">En Route</span>
+                                </div>
+                                <p class="text-lg font-bold text-foreground mt-1" data-bind="'$' + activeRide.fare">$68</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center space-x-2 text-sm">
+                                <i class="fas fa-map-marker-alt text-muted-foreground w-4"></i>
+                                <span data-bind="activeRide.pickup">Student Dormitory A</span>
+                            </div>
+                            <div class="flex items-center space-x-2 text-sm">
+                                <i class="fas fa-flag-checkered text-muted-foreground w-4"></i>
+                                <span data-bind="activeRide.destination">Main Campus Library</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-3">
+                            <button 
+                                class="flex-1 bg-accent text-accent-foreground py-2 px-4 rounded-lg font-medium hover:bg-accent/90 transition-colors duration-200 flex items-center justify-center space-x-2"
+                                data-event="click:completeRide(activeRide.id)"
+                                data-implementation="Should mark ride as completed">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Complete Ride</span>
+                            </button>
+                            <button 
+                                class="px-4 py-2 border border-border rounded-lg text-muted-foreground hover:bg-muted transition-colors duration-200"
+                                data-event="click:contactStudent(activeRide.studentId)">
+                                <i class="fas fa-phone"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: DriverInterface -->
+
+        <!-- @COMPONENT: NotificationToast -->
+        <div id="notificationToast" class="fixed top-4 right-4 z-50 hidden">
+            <div class="bg-card border border-border rounded-lg p-4 shadow-lg max-w-sm">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-bell text-accent"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-foreground" data-bind="notification.title">New Ride Request</h4>
+                        <p class="text-sm text-muted-foreground" data-bind="notification.message">A student has requested a ride from Dormitory A to Library</p>
+                    </div>
+                    <button class="text-muted-foreground hover:text-foreground" data-event="click:dismissNotification()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: NotificationToast -->
+    </main>
+
+    <script>
+        // TODO: Implement Socket.io connection for real-time updates
+        // TODO: Implement business logic, API calls, and state management
+        
+        (function() {
+            // Mock data and state management
+            let currentRole = 'student';
+            let currentRide = null;
+            let activeRide = null;
+            let availableRides = [
+                {
+                    id: Date.now(),
+                    studentName: 'Student_247',
+                    pickup: 'Student Dormitory A',
+                    destination: 'Main Campus Library',
+                    distance: '2.3 km',
+                    duration: '8 min',
+                    fare: 68,
+                    status: 'waiting'
+                },
+                {
+                    id: Date.now() + 1,
+                    studentName: 'Student_892',
+                    pickup: 'Campus Center',
+                    destination: 'Sports Complex',
+                    distance: '1.8 km',
+                    duration: '6 min',
+                    fare: 54,
+                    status: 'waiting'
+                }
+            ];
+
+            // Role switching functionality
+            function setRole(role) {
+                currentRole = role;
+                
+                const studentBtn = document.getElementById('studentRoleBtn');
+                const driverBtn = document.getElementById('driverRoleBtn');
+                const studentInterface = document.getElementById('studentInterface');
+                const driverInterface = document.getElementById('driverInterface');
+                
+                if (role === 'student') {
+                    studentBtn.className = 'flex-1 p-4 border-2 border-primary bg-primary/5 rounded-lg transition-all duration-200 hover:bg-primary/10';
+                    driverBtn.className = 'flex-1 p-4 border-2 border-border bg-card rounded-lg transition-all duration-200 hover:bg-muted';
+                    studentInterface.classList.remove('hidden');
+                    driverInterface.classList.add('hidden');
+                } else {
+                    driverBtn.className = 'flex-1 p-4 border-2 border-secondary bg-secondary/5 rounded-lg transition-all duration-200 hover:bg-secondary/10';
+                    studentBtn.className = 'flex-1 p-4 border-2 border-border bg-card rounded-lg transition-all duration-200 hover:bg-muted';
+                    driverInterface.classList.remove('hidden');
+                    studentInterface.classList.add('hidden');
+                }
+            }
+
+            // Mock ride request functionality
+            function requestRide() {
+                // TODO: Implement actual ride request logic with API call
+                showNotification('Ride Requested', 'Your ride request has been submitted. Waiting for driver acceptance.');
+                console.log('Ride requested');
+            }
+
+            // Mock ride acceptance functionality  
+            function acceptRide(rideId) {
+                // TODO: Implement actual ride acceptance logic with API call
+                showNotification('Ride Accepted', 'You have successfully accepted the ride request.');
+                console.log('Ride accepted:', rideId);
+            }
+
+            // Notification system
+            function showNotification(title, message) {
+                const toast = document.getElementById('notificationToast');
+                const titleEl = toast.querySelector('[data-bind="notification.title"]');
+                const messageEl = toast.querySelector('[data-bind="notification.message"]');
+                
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                
+                toast.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 5000);
+            }
+
+            function dismissNotification() {
+                document.getElementById('notificationToast').classList.add('hidden');
+            }
+
+            // Attach event listeners
+            document.getElementById('studentRoleBtn').addEventListener('click', () => setRole('student'));
+            document.getElementById('driverRoleBtn').addEventListener('click', () => setRole('driver'));
+            
+            // Mock Socket.io events for demonstration
+            // TODO: Replace with actual Socket.io implementation
+            setInterval(() => {
+                if (Math.random() > 0.95) { // Random chance for demo
+                    showNotification('New Ride Request', 'A new ride request is available in your area.');
+                }
+            }, 10000);
+
+            // Initialize default state
+            setRole('student');
+        })();
+    </script>
+</body>
+</html>

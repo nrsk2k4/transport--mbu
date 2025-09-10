@@ -1,0 +1,1148 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBU Smart Transport - Professional Transport Solution</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["Inter", "ui-sans-serif", "system-ui"],
+                }
+            },
+        }
+    };
+    </script>
+    
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(222.2 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222.2 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222.2 84% 4.9%);
+            --primary: hsl(221.2 83.2% 53.3%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222.2 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215.4 16.3% 46.9%);
+            --accent: hsl(28.7 76.6% 60.8%);
+            --accent-foreground: hsl(210 40% 98%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214.3 31.8% 91.4%);
+            --input: hsl(214.3 31.8% 91.4%);
+            --ring: hsl(221.2 83.2% 53.3%);
+            --radius: 0.75rem;
+        }
+        
+        .dark {
+            --background: hsl(222.2 84% 4.9%);
+            --foreground: hsl(210 40% 98%);
+            --card: hsl(222.2 84% 4.9%);
+            --card-foreground: hsl(210 40% 98%);
+            --popover: hsl(222.2 84% 4.9%);
+            --popover-foreground: hsl(210 40% 98%);
+            --primary: hsl(217.2 91.2% 59.8%);
+            --primary-foreground: hsl(222.2 84% 4.9%);
+            --secondary: hsl(217.2 32.6% 17.5%);
+            --secondary-foreground: hsl(210 40% 98%);
+            --muted: hsl(217.2 32.6% 17.5%);
+            --muted-foreground: hsl(215 20.2% 65.1%);
+            --accent: hsl(28.7 76.6% 60.8%);
+            --accent-foreground: hsl(222.2 84% 4.9%);
+            --destructive: hsl(0 62.8% 30.6%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(217.2 32.6% 17.5%);
+            --input: hsl(217.2 32.6% 17.5%);
+            --ring: hsl(224.3 76.3% 94.0%);
+        }
+
+        .status-waiting { background: linear-gradient(135deg, #FEF3C7, #F59E0B); }
+        .status-accepted { background: linear-gradient(135deg, #DBEAFE, #3B82F6); }
+        .status-completed { background: linear-gradient(135deg, #D1FAE5, #10B981); }
+        .status-cancelled { background: linear-gradient(135deg, #FEE2E2, #EF4444); }
+        
+        .ride-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .map-container {
+            height: 300px;
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #EF4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground font-sans">
+    <!-- @COMPONENT: NavigationHeader [role-based navigation] -->
+    <header class="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-car text-primary-foreground text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-foreground">MBU Smart Transport</h1>
+                        <p class="text-xs text-muted-foreground">Professional Transport Solution</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Language Selector -->
+                    <select class="bg-secondary text-secondary-foreground px-3 py-1 rounded-md text-sm border border-border focus:ring-2 focus:ring-ring focus:outline-none">
+                        <option value="en">English</option>
+                        <option value="hi">हिंदी</option>
+                        <option value="te">తెలుగు</option>
+                        <option value="ta">தமிழ்</option>
+                    </select>
+                    
+                    <!-- Role Switcher -->
+                    <div class="flex bg-secondary rounded-lg p-1">
+                        <button id="studentRole" class="role-btn px-3 py-1 rounded-md text-sm font-medium transition-all bg-primary text-primary-foreground">
+                            Student
+                        </button>
+                        <button id="driverRole" class="role-btn px-3 py-1 rounded-md text-sm font-medium transition-all text-secondary-foreground hover:bg-muted">
+                            Driver
+                        </button>
+                        <button id="adminRole" class="role-btn px-3 py-1 rounded-md text-sm font-medium transition-all text-secondary-foreground hover:bg-muted">
+                            Admin
+                        </button>
+                    </div>
+                    
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <button class="p-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors">
+                            <i class="fas fa-bell"></i>
+                            <div class="notification-badge" data-mock="true">3</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: NavigationHeader -->
+
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- @COMPONENT: StudentInterface [ride request and tracking] -->
+        <div id="studentInterface" class="space-y-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground">Avg Wait Time</p>
+                            <p class="text-lg font-semibold" data-bind="stats.avgWaitTime">4.2 min</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-car text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground">Available Drivers</p>
+                            <p class="text-lg font-semibold" data-bind="stats.availableDrivers">12</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rupee-sign text-orange-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground">Base Fare</p>
+                            <p class="text-lg font-semibold" data-bind="stats.baseFare">₹25</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground">Pool Savings</p>
+                            <p class="text-lg font-semibold text-green-600" data-bind="stats.poolSavings">30%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ride Request Form -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-card p-6 rounded-lg border border-border">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-map-marker-alt text-primary mr-2"></i>
+                            Request a Ride
+                        </h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Pickup Location</label>
+                                <div class="relative">
+                                    <input type="text" 
+                                           class="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none pl-10" 
+                                           placeholder="Enter pickup location"
+                                           data-mock="true"
+                                           value="MBU Main Gate">
+                                    <i class="fas fa-map-marker-alt absolute left-3 top-3.5 text-green-500"></i>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Drop Location</label>
+                                <div class="relative">
+                                    <input type="text" 
+                                           class="w-full p-3 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none pl-10" 
+                                           placeholder="Enter destination"
+                                           data-mock="true">
+                                    <i class="fas fa-map-marker-alt absolute left-3 top-3.5 text-red-500"></i>
+                                </div>
+                            </div>
+                            
+                            <!-- Ride Type Selection -->
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Ride Type</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="p-3 border-2 border-primary bg-primary/10 rounded-lg cursor-pointer transition-all">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="font-medium">Solo Ride</h4>
+                                                <p class="text-sm text-muted-foreground">Private ride</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="font-semibold text-primary">₹45</p>
+                                                <p class="text-xs text-muted-foreground">Est. fare</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="p-3 border border-border bg-card rounded-lg cursor-pointer hover:border-primary transition-all">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="font-medium">Pool Ride</h4>
+                                                <p class="text-sm text-muted-foreground">Share & save</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="font-semibold text-green-600">₹32</p>
+                                                <p class="text-xs text-muted-foreground">Est. fare</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Pool Suggestions -->
+                            <div class="bg-muted p-4 rounded-lg">
+                                <h4 class="font-medium text-sm mb-2 flex items-center">
+                                    <i class="fas fa-users text-primary mr-2"></i>
+                                    Pool Suggestions
+                                </h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between p-2 bg-card rounded-md text-sm">
+                                        <span data-mock="true">Priya S. - Library → City Center</span>
+                                        <span class="text-green-600 font-medium">Save ₹8</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-2 bg-card rounded-md text-sm">
+                                        <span data-mock="true">Rahul K. - Hostel → Railway Station</span>
+                                        <span class="text-green-600 font-medium">Save ₹12</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button class="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center justify-center space-x-2"
+                                    data-event="click:requestRide">
+                                <i class="fas fa-car"></i>
+                                <span>Request Ride</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Map and Current Ride -->
+                <div class="space-y-4">
+                    <!-- Live Map -->
+                    <div class="bg-card p-4 rounded-lg border border-border">
+                        <h3 class="font-medium mb-3 flex items-center">
+                            <i class="fas fa-map text-primary mr-2"></i>
+                            Live Map
+                        </h3>
+                        <div class="map-container bg-muted rounded-lg relative">
+                            <!-- Simulated map with leaflet integration -->
+                            <div id="studentMap" class="w-full h-full">
+                                <!-- @FUNCTIONALITY: Integrate Leaflet map with real-time driver locations -->
+                            </div>
+                            <!-- Map overlay for demo -->
+                            <div class="absolute inset-0 bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center rounded-lg">
+                                <div class="text-center">
+                                    <i class="fas fa-map-marked-alt text-4xl text-primary mb-2"></i>
+                                    <p class="text-sm text-muted-foreground">Live Driver Tracking</p>
+                                    <div class="flex justify-center space-x-2 mt-2">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Ride Status -->
+                    <div class="bg-card p-4 rounded-lg border border-border">
+                        <h3 class="font-medium mb-3">Current Ride</h3>
+                        <div id="currentRideStatus" class="hidden">
+                            <!-- @STATE: currentRide:object = null -->
+                            <div class="status-waiting p-4 rounded-lg text-white mb-3 ride-pulse">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium">Searching for Driver...</p>
+                                        <p class="text-sm opacity-90" data-bind="currentRide.estimatedTime">Est. 3-5 minutes</p>
+                                    </div>
+                                    <i class="fas fa-spinner fa-spin text-xl"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-sm">
+                                    <span>Ride ID:</span>
+                                    <span class="font-medium" data-bind="currentRide.id">#RD001234</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span>Fare:</span>
+                                    <span class="font-medium text-green-600" data-bind="currentRide.fare">₹45</span>
+                                </div>
+                                <button class="w-full bg-destructive text-destructive-foreground py-2 rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors"
+                                        data-event="click:cancelRide">
+                                    Cancel Ride
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="noCurrentRide">
+                            <div class="text-center py-8 text-muted-foreground">
+                                <i class="fas fa-car text-4xl mb-3 opacity-50"></i>
+                                <p>No active ride</p>
+                                <p class="text-sm">Request a ride to get started</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Rides -->
+            <div class="bg-card p-6 rounded-lg border border-border">
+                <h2 class="text-xl font-semibold mb-4 flex items-center justify-between">
+                    <span class="flex items-center">
+                        <i class="fas fa-history text-primary mr-2"></i>
+                        Recent Rides
+                    </span>
+                    <button class="text-sm text-primary hover:underline">View All</button>
+                </h2>
+                
+                <div class="space-y-3">
+                    <!-- @MAP: recentRides.map(ride => ( -->
+                    <div class="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium" data-mock="true">MBU Main Gate → City Mall</p>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Today, 2:30 PM • Driver: Suresh Kumar</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" data-mock="true">₹42</p>
+                            <button class="text-xs text-primary hover:underline">Rate</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium" data-mock="true">Hostel Block A → Library</p>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Yesterday, 9:15 AM • Driver: Ramesh Babu</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold" data-mock="true">₹28</p>
+                            <div class="flex text-xs text-yellow-500">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: StudentInterface -->
+
+        <!-- @COMPONENT: DriverInterface [availability toggle, ride acceptance] -->
+        <div id="driverInterface" class="space-y-6 hidden">
+            <!-- Driver Status Card -->
+            <div class="bg-card p-6 rounded-lg border border-border">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-primary-foreground text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-semibold" data-bind="driver.name">Suresh Kumar</h2>
+                            <p class="text-muted-foreground" data-bind="driver.vehicle">Maruti Swift • KA 01 AB 1234</p>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <div class="flex text-yellow-500 text-sm">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <span class="text-sm text-muted-foreground" data-bind="driver.rating">4.8 (234 rides)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Availability Toggle -->
+                    <div class="text-right">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <span class="text-sm text-muted-foreground">Available</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" checked data-event="change:toggleAvailability">
+                                <div class="w-11 h-6 bg-muted peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                            </label>
+                        </div>
+                        <div id="onlineStatus" class="inline-flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Online</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Earnings Summary -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-green-600" data-bind="earnings.today">₹420</p>
+                        <p class="text-sm text-muted-foreground">Today's Earnings</p>
+                    </div>
+                </div>
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-primary" data-bind="earnings.rides">12</p>
+                        <p class="text-sm text-muted-foreground">Rides Completed</p>
+                    </div>
+                </div>
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-orange-600" data-bind="earnings.hours">6.5h</p>
+                        <p class="text-sm text-muted-foreground">Online Time</p>
+                    </div>
+                </div>
+                <div class="bg-card p-4 rounded-lg border border-border">
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-purple-600" data-bind="earnings.rating">4.8</p>
+                        <p class="text-sm text-muted-foreground">Rating</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Rides -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-list text-primary mr-2"></i>
+                        Available Rides
+                        <span class="ml-2 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs" data-bind="availableRides.length">3</span>
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <!-- @MAP: availableRides.map(ride => ( -->
+                        <div class="p-4 border border-border rounded-lg hover:border-primary transition-all cursor-pointer">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user text-blue-600 text-sm"></i>
+                                        </div>
+                                        <span class="font-medium text-sm" data-mock="true">Priya Sharma</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-circle text-green-500 text-xs"></i>
+                                            <span data-mock="true">MBU Main Gate</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-circle text-red-500 text-xs"></i>
+                                            <span data-mock="true">City Center Mall</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-bold text-green-600" data-mock="true">₹45</p>
+                                    <p class="text-xs text-muted-foreground" data-mock="true">4.2 km • 12 min</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4 text-xs text-muted-foreground">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <span data-mock="true">2 min ago</span>
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-star mr-1"></i>
+                                        <span data-mock="true">4.6</span>
+                                    </span>
+                                </div>
+                                <button class="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                                        data-event="click:acceptRide">
+                                    Accept
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 border border-border rounded-lg hover:border-primary transition-all cursor-pointer">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user text-blue-600 text-sm"></i>
+                                        </div>
+                                        <span class="font-medium text-sm" data-mock="true">Rahul Patel</span>
+                                        <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs">Pool</span>
+                                    </div>
+                                    <div class="space-y-1 text-sm">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-circle text-green-500 text-xs"></i>
+                                            <span data-mock="true">Hostel Block B</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-circle text-red-500 text-xs"></i>
+                                            <span data-mock="true">Railway Station</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-lg font-bold text-green-600" data-mock="true">₹38</p>
+                                    <p class="text-xs text-muted-foreground" data-mock="true">6.1 km • 18 min</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4 text-xs text-muted-foreground">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <span data-mock="true">5 min ago</span>
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-users mr-1"></i>
+                                        <span data-mock="true">2 passengers</span>
+                                    </span>
+                                </div>
+                                <button class="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                                        data-event="click:acceptRide">
+                                    Accept
+                                </button>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+                
+                <!-- Driver Map and Current Trip -->
+                <div class="space-y-4">
+                    <div class="bg-card p-4 rounded-lg border border-border">
+                        <h3 class="font-medium mb-3 flex items-center">
+                            <i class="fas fa-route text-primary mr-2"></i>
+                            Navigation
+                        </h3>
+                        <div class="map-container bg-muted rounded-lg relative">
+                            <div id="driverMap" class="w-full h-full">
+                                <!-- @FUNCTIONALITY: Integrate Leaflet map with turn-by-turn navigation -->
+                            </div>
+                            <!-- Map overlay for demo -->
+                            <div class="absolute inset-0 bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center rounded-lg">
+                                <div class="text-center">
+                                    <i class="fas fa-route text-4xl text-primary mb-2"></i>
+                                    <p class="text-sm text-muted-foreground">Turn-by-turn Navigation</p>
+                                    <div class="mt-2 px-3 py-1 bg-primary text-primary-foreground rounded-full text-xs">
+                                        Next: Turn right in 500m
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Trip -->
+                    <div class="bg-card p-4 rounded-lg border border-border">
+                        <h3 class="font-medium mb-3">Current Trip</h3>
+                        <div id="currentTrip" class="hidden">
+                            <div class="status-accepted p-4 rounded-lg text-white mb-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium">Trip in Progress</p>
+                                        <p class="text-sm opacity-90" data-bind="currentTrip.passenger">Passenger: Priya Sharma</p>
+                                    </div>
+                                    <button class="bg-white/20 text-white px-3 py-1 rounded-md text-sm hover:bg-white/30 transition-colors"
+                                            data-event="click:callPassenger">
+                                        <i class="fas fa-phone mr-1"></i>
+                                        Call
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between text-sm">
+                                    <span>Trip Fare:</span>
+                                    <span class="font-medium text-green-600" data-bind="currentTrip.fare">₹45</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span>Distance:</span>
+                                    <span class="font-medium" data-bind="currentTrip.distance">4.2 km</span>
+                                </div>
+                                <button class="w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                                        data-event="click:completeTrip">
+                                    Complete Trip
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="noCurrentTrip">
+                            <div class="text-center py-8 text-muted-foreground">
+                                <i class="fas fa-route text-4xl mb-3 opacity-50"></i>
+                                <p>No active trip</p>
+                                <p class="text-sm">Accept a ride to start earning</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: DriverInterface -->
+
+        <!-- @COMPONENT: AdminDashboard [analytics and management] -->
+        <div id="adminInterface" class="space-y-6 hidden">
+            <!-- Dashboard Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Total Rides Today</p>
+                            <p class="text-3xl font-bold text-primary" data-bind="admin.totalRides">142</p>
+                            <p class="text-green-600 text-sm mt-1">↑ 12% from yesterday</p>
+                        </div>
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-car text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Active Drivers</p>
+                            <p class="text-3xl font-bold text-green-600" data-bind="admin.activeDrivers">23</p>
+                            <p class="text-green-600 text-sm mt-1">↑ 5 since morning</p>
+                        </div>
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-users text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Revenue Today</p>
+                            <p class="text-3xl font-bold text-orange-600" data-bind="admin.revenue">₹6,240</p>
+                            <p class="text-green-600 text-sm mt-1">↑ 8% from yesterday</p>
+                        </div>
+                        <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-rupee-sign text-orange-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Avg Rating</p>
+                            <p class="text-3xl font-bold text-yellow-600" data-bind="admin.avgRating">4.7</p>
+                            <p class="text-green-600 text-sm mt-1">Excellent service</p>
+                        </div>
+                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-star text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Demand Prediction Chart -->
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-chart-line text-primary mr-2"></i>
+                        AI Demand Prediction
+                    </h2>
+                    <div class="h-64">
+                        <canvas id="demandChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Revenue Chart -->
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-chart-bar text-primary mr-2"></i>
+                        Revenue Trends
+                    </h2>
+                    <div class="h-64">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Activity and Driver Management -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Real-time Activity -->
+                <div class="lg:col-span-2 bg-card p-6 rounded-lg border border-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center justify-between">
+                        <span class="flex items-center">
+                            <i class="fas fa-activity text-primary mr-2"></i>
+                            Real-time Activity
+                        </span>
+                        <span class="text-sm text-muted-foreground">Last updated: just now</span>
+                    </h2>
+                    
+                    <div class="space-y-3 max-h-80 overflow-y-auto">
+                        <!-- @MAP: realtimeActivity.map(activity => ( -->
+                        <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-check text-green-600 text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium" data-mock="true">Ride completed: Priya S. → City Mall</p>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Driver: Suresh Kumar • ₹42</p>
+                            </div>
+                            <span class="text-xs text-muted-foreground" data-mock="true">2m ago</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-car text-blue-600 text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium" data-mock="true">New ride request: Hostel → Library</p>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Student: Rahul K. • Pool ride</p>
+                            </div>
+                            <span class="text-xs text-muted-foreground" data-mock="true">3m ago</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                            <div class="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user-plus text-orange-600 text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium" data-mock="true">Driver came online: Ramesh Babu</p>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Location: MBU Main Gate</p>
+                            </div>
+                            <span class="text-xs text-muted-foreground" data-mock="true">5m ago</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
+                            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-star text-purple-600 text-sm"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium" data-mock="true">5-star rating received</p>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Driver: Krishna Reddy</p>
+                            </div>
+                            <span class="text-xs text-muted-foreground" data-mock="true">7m ago</span>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+                
+                <!-- Driver Management -->
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <h2 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-users-cog text-primary mr-2"></i>
+                        Driver Status
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <!-- @MAP: drivers.map(driver => ( -->
+                        <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-blue-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium" data-mock="true">Suresh Kumar</p>
+                                    <p class="text-xs text-muted-foreground" data-mock="true">KA 01 AB 1234</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mb-1"></div>
+                                <p class="text-xs text-muted-foreground" data-mock="true">On trip</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-blue-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium" data-mock="true">Ramesh Babu</p>
+                                    <p class="text-xs text-muted-foreground" data-mock="true">KA 02 CD 5678</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="w-2 h-2 bg-green-500 rounded-full mb-1"></div>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Available</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-user text-blue-600 text-sm"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium" data-mock="true">Krishna Reddy</p>
+                                    <p class="text-xs text-muted-foreground" data-mock="true">KA 03 EF 9012</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="w-2 h-2 bg-gray-400 rounded-full mb-1"></div>
+                                <p class="text-xs text-muted-foreground" data-mock="true">Offline</p>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                    
+                    <button class="w-full mt-4 bg-secondary text-secondary-foreground py-2 rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors">
+                        Manage All Drivers
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: AdminDashboard -->
+    </main>
+
+    <!-- @COMPONENT: NotificationToast [real-time notifications] -->
+    <div id="notificationToast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-card border border-border rounded-lg shadow-lg p-4 max-w-sm">
+            <div class="flex items-start space-x-3">
+                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-bell text-blue-600"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium text-sm" id="notificationTitle">New Ride Request</p>
+                    <p class="text-xs text-muted-foreground" id="notificationMessage">A student has requested a ride from MBU Main Gate to City Mall</p>
+                </div>
+                <button class="text-muted-foreground hover:text-foreground" onclick="hideNotification()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: NotificationToast -->
+
+    <script>
+        // Role switching functionality
+        (function() {
+            const studentBtn = document.getElementById('studentRole');
+            const driverBtn = document.getElementById('driverRole');
+            const adminBtn = document.getElementById('adminRole');
+            
+            const studentInterface = document.getElementById('studentInterface');
+            const driverInterface = document.getElementById('driverInterface');
+            const adminInterface = document.getElementById('adminInterface');
+            
+            function switchRole(role) {
+                // Reset all buttons
+                document.querySelectorAll('.role-btn').forEach(btn => {
+                    btn.classList.remove('bg-primary', 'text-primary-foreground');
+                    btn.classList.add('text-secondary-foreground', 'hover:bg-muted');
+                });
+                
+                // Hide all interfaces
+                studentInterface.classList.add('hidden');
+                driverInterface.classList.add('hidden');
+                adminInterface.classList.add('hidden');
+                
+                // Show selected interface and highlight button
+                if (role === 'student') {
+                    studentInterface.classList.remove('hidden');
+                    studentBtn.classList.remove('text-secondary-foreground', 'hover:bg-muted');
+                    studentBtn.classList.add('bg-primary', 'text-primary-foreground');
+                } else if (role === 'driver') {
+                    driverInterface.classList.remove('hidden');
+                    driverBtn.classList.remove('text-secondary-foreground', 'hover:bg-muted');
+                    driverBtn.classList.add('bg-primary', 'text-primary-foreground');
+                } else if (role === 'admin') {
+                    adminInterface.classList.remove('hidden');
+                    adminBtn.classList.remove('text-secondary-foreground', 'hover:bg-muted');
+                    adminBtn.classList.add('bg-primary', 'text-primary-foreground');
+                    initializeCharts(); // Initialize charts when admin panel is shown
+                }
+            }
+            
+            studentBtn.addEventListener('click', () => switchRole('student'));
+            driverBtn.addEventListener('click', () => switchRole('driver'));
+            adminBtn.addEventListener('click', () => switchRole('admin'));
+        })();
+
+        // Mock ride request functionality
+        function requestRide() {
+            const currentRideStatus = document.getElementById('currentRideStatus');
+            const noCurrentRide = document.getElementById('noCurrentRide');
+            
+            noCurrentRide.classList.add('hidden');
+            currentRideStatus.classList.remove('hidden');
+            
+            showNotification('Ride Requested', 'Searching for nearby drivers...');
+            
+            // Simulate driver acceptance after 3 seconds
+            setTimeout(() => {
+                const statusElement = currentRideStatus.querySelector('.status-waiting');
+                statusElement.className = 'status-accepted p-4 rounded-lg text-white mb-3';
+                statusElement.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium">Driver Found!</p>
+                            <p class="text-sm opacity-90">Suresh Kumar is on the way</p>
+                        </div>
+                        <button class="bg-white/20 text-white px-3 py-1 rounded-md text-sm hover:bg-white/30 transition-colors">
+                            <i class="fas fa-phone mr-1"></i>
+                            Call
+                        </button>
+                    </div>
+                `;
+                showNotification('Driver Assigned', 'Suresh Kumar will pick you up in 4 minutes');
+            }, 3000);
+        }
+
+        // Mock driver availability toggle
+        function toggleAvailability(checkbox) {
+            const statusElement = document.getElementById('onlineStatus');
+            if (checkbox.checked) {
+                statusElement.className = 'inline-flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium';
+                statusElement.innerHTML = '<div class="w-2 h-2 bg-green-500 rounded-full"></div><span>Online</span>';
+            } else {
+                statusElement.className = 'inline-flex items-center space-x-2 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium';
+                statusElement.innerHTML = '<div class="w-2 h-2 bg-gray-500 rounded-full"></div><span>Offline</span>';
+            }
+        }
+
+        // Notification system
+        function showNotification(title, message) {
+            const toast = document.getElementById('notificationToast');
+            const titleElement = document.getElementById('notificationTitle');
+            const messageElement = document.getElementById('notificationMessage');
+            
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 5000);
+        }
+
+        function hideNotification() {
+            document.getElementById('notificationToast').classList.add('hidden');
+        }
+
+        // Initialize charts for admin dashboard
+        function initializeCharts() {
+            // Demand Prediction Chart
+            const demandCtx = document.getElementById('demandChart');
+            if (demandCtx && !demandCtx.chart) {
+                demandCtx.chart = new Chart(demandCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM', '12 AM'],
+                        datasets: [{
+                            label: 'Predicted Demand',
+                            data: [12, 45, 25, 35, 67, 89, 23],
+                            borderColor: 'hsl(221.2 83.2% 53.3%)',
+                            backgroundColor: 'hsla(221.2, 83.2%, 53.3%, 0.1)',
+                            tension: 0.4
+                        }, {
+                            label: 'Actual Demand',
+                            data: [8, 42, 28, 32, 71, 85, 19],
+                            borderColor: 'hsl(28.7 76.6% 60.8%)',
+                            backgroundColor: 'hsla(28.7, 76.6%, 60.8%, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart');
+            if (revenueCtx && !revenueCtx.chart) {
+                revenueCtx.chart = new Chart(revenueCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Revenue (₹)',
+                            data: [5200, 6100, 4800, 5900, 6240, 7100, 5800],
+                            backgroundColor: 'hsl(28.7 76.6% 60.8%)',
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Mock real-time updates
+        setInterval(() => {
+            const notifications = [
+                { title: 'Ride Completed', message: 'Revenue: ₹45 added to today\'s earnings' },
+                { title: 'New Driver Online', message: 'Ravi Kumar is now available for rides' },
+                { title: 'Peak Hour Alert', message: 'High demand predicted in next 30 minutes' },
+                { title: 'Pool Ride Success', message: '3 students shared a ride to Railway Station' }
+            ];
+            
+            const randomNotification = notifications[Math.floor(Math.random() * notifications.length)];
+            
+            if (Math.random() > 0.7) { // 30% chance of showing notification
+                showNotification(randomNotification.title, randomNotification.message);
+            }
+        }, 10000);
+
+        // TODO: Implement Socket.IO for real-time updates
+        // TODO: Integrate with Google Maps/Leaflet for live tracking
+        // TODO: Add Twilio integration for phone calling functionality
+        // TODO: Implement ride pooling algorithm
+        // TODO: Add multi-language support with i18n
+        // TODO: Connect to actual backend API
+    </script>
+</body>
+</html>

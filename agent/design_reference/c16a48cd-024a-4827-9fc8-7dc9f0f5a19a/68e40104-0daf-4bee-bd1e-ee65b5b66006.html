@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBU Smart Transport - Ride Sharing Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                }
+            },
+        }
+    };
+    </script>
+    <style>
+        :root {
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(222.2 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222.2 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222.2 84% 4.9%);
+            --primary: hsl(142.1 76.2% 36.3%);
+            --primary-foreground: hsl(355.7 100% 97.3%);
+            --secondary: hsl(210 40% 98%);
+            --secondary-foreground: hsl(222.2 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215.4 16.3% 46.9%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222.2 84% 4.9%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214.3 31.8% 91.4%);
+            --input: hsl(214.3 31.8% 91.4%);
+            --ring: hsl(142.1 76.2% 36.3%);
+            --radius: 0.75rem;
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        .dark {
+            --background: hsl(222.2 84% 4.9%);
+            --foreground: hsl(210 40% 98%);
+            --card: hsl(222.2 84% 4.9%);
+            --card-foreground: hsl(210 40% 98%);
+            --popover: hsl(222.2 84% 4.9%);
+            --popover-foreground: hsl(210 40% 98%);
+            --primary: hsl(142.1 70.6% 45.3%);
+            --primary-foreground: hsl(144.9 80.4% 10%);
+            --secondary: hsl(217.2 32.6% 17.5%);
+            --secondary-foreground: hsl(210 40% 98%);
+            --muted: hsl(217.2 32.6% 17.5%);
+            --muted-foreground: hsl(215 20.2% 65.1%);
+            --accent: hsl(217.2 32.6% 17.5%);
+            --accent-foreground: hsl(210 40% 98%);
+            --destructive: hsl(0 62.8% 30.6%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(217.2 32.6% 17.5%);
+            --input: hsl(217.2 32.6% 17.5%);
+            --ring: hsl(142.1 70.6% 45.3%);
+        }
+
+        .status-waiting { 
+            @apply bg-yellow-100 text-yellow-800 border-yellow-200; 
+        }
+        .status-accepted { 
+            @apply bg-green-100 text-green-800 border-green-200; 
+        }
+        .status-completed { 
+            @apply bg-blue-100 text-blue-800 border-blue-200; 
+        }
+        .status-cancelled { 
+            @apply bg-red-100 text-red-800 border-red-200; 
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        .ride-card-animation {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground font-sans">
+    <!-- @COMPONENT: Header -->
+    <header class="bg-card border-b border-border shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-car text-primary-foreground text-sm"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-foreground">MBU Smart Transport</h1>
+                    </div>
+                </div>
+                
+                <!-- Language Switcher -->
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <select id="languageSelect" class="bg-secondary text-secondary-foreground border border-border rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="hi">🇮🇳 हिंदी</option>
+                            <option value="te">తెలుగు</option>
+                            <option value="ta">தமிழ்</option>
+                        </select>
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                        <span class="pulse-dot inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                        <span id="connectionStatus">Connected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- @COMPONENT: StudentPanel -->
+            <div class="space-y-6">
+                <div class="bg-card rounded-lg border border-border shadow-sm">
+                    <div class="p-6 border-b border-border">
+                        <h2 class="text-2xl font-semibold text-foreground flex items-center">
+                            <i class="fas fa-user-graduate text-primary mr-3"></i>
+                            <span data-translate="student.title">Student Panel</span>
+                        </h2>
+                        <p class="text-muted-foreground mt-1" data-translate="student.description">Request a ride to your destination</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        <!-- Pickup Location -->
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2" data-translate="student.pickup">Pickup Location</label>
+                            <div class="relative">
+                                <input type="text" id="pickupLocation" 
+                                       class="w-full bg-input border border-border rounded-md px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                       placeholder="Enter pickup address..." data-mock="true">
+                                <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Destination -->
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2" data-translate="student.destination">Destination</label>
+                            <div class="relative">
+                                <input type="text" id="destination" 
+                                       class="w-full bg-input border border-border rounded-md px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                       placeholder="Where are you going?" data-mock="true">
+                                <button class="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary/80">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2" data-translate="student.contact">Contact Number</label>
+                            <input type="tel" id="studentContact" 
+                                   class="w-full bg-input border border-border rounded-md px-4 py-3 text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                                   placeholder="+91 XXXXX XXXXX" data-mock="true">
+                        </div>
+
+                        <!-- Request Ride Button -->
+                        <button onclick="requestRide()" 
+                                class="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 px-4 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2"
+                                data-event="click:requestRide">
+                            <i class="fas fa-car"></i>
+                            <span data-translate="student.request">Request Ride</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Student Ride Status -->
+                <div id="studentRideStatus" class="bg-card rounded-lg border border-border shadow-sm hidden">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-foreground mb-4" data-translate="student.status">Your Ride Status</h3>
+                        <div id="currentRideInfo" class="space-y-4">
+                            <!-- Dynamic ride information will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: StudentPanel -->
+
+            <!-- @COMPONENT: DriverPanel -->
+            <div class="space-y-6">
+                <div class="bg-card rounded-lg border border-border shadow-sm">
+                    <div class="p-6 border-b border-border">
+                        <h2 class="text-2xl font-semibold text-foreground flex items-center">
+                            <i class="fas fa-user-tie text-primary mr-3"></i>
+                            <span data-translate="driver.title">Driver Panel</span>
+                        </h2>
+                        <p class="text-muted-foreground mt-1" data-translate="driver.description">View and accept ride requests</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        <!-- Driver Status Toggle -->
+                        <div class="flex items-center justify-between p-4 bg-muted rounded-md">
+                            <div>
+                                <h4 class="font-medium text-foreground" data-translate="driver.availability">Availability Status</h4>
+                                <p class="text-sm text-muted-foreground" data-translate="driver.toggle">Toggle to receive ride requests</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="driverStatus" class="sr-only peer" onchange="toggleDriverStatus()">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+
+                        <!-- View Requests Button -->
+                        <button onclick="loadRideRequests()" 
+                                class="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium py-3 px-4 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2"
+                                data-event="click:loadRideRequests">
+                            <i class="fas fa-list"></i>
+                            <span data-translate="driver.viewRequests">View Ride Requests</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Available Rides -->
+                <div class="bg-card rounded-lg border border-border shadow-sm">
+                    <div class="p-6 border-b border-border">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center justify-between">
+                            <span data-translate="driver.available">Available Rides</span>
+                            <span id="rideCount" class="text-sm bg-primary text-primary-foreground px-2 py-1 rounded-full">0</span>
+                        </h3>
+                    </div>
+                    <div id="rideRequests" class="divide-y divide-border max-h-96 overflow-y-auto">
+                        <div class="p-6 text-center text-muted-foreground">
+                            <i class="fas fa-hourglass-half text-2xl mb-2"></i>
+                            <p data-translate="driver.waiting">Waiting for ride requests...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: DriverPanel -->
+        </div>
+
+        <!-- @COMPONENT: RecentActivity -->
+        <div class="mt-8">
+            <div class="bg-card rounded-lg border border-border shadow-sm">
+                <div class="p-6 border-b border-border">
+                    <h3 class="text-lg font-semibold text-foreground" data-translate="activity.title">Recent Activity</h3>
+                </div>
+                <div id="activityFeed" class="divide-y divide-border max-h-64 overflow-y-auto">
+                    <div class="p-4 text-center text-muted-foreground">
+                        <p data-translate="activity.empty">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: RecentActivity -->
+    </div>
+
+    <!-- @COMPONENT: CallModal -->
+    <div id="callModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-card rounded-lg border border-border shadow-xl p-6 m-4 w-full max-w-md">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-phone text-primary-foreground text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-foreground mb-2" data-translate="call.title">Calling...</h3>
+                <p class="text-muted-foreground mb-6" id="callModalNumber">+91 XXXXX XXXXX</p>
+                <div class="flex space-x-4">
+                    <button onclick="endCall()" class="flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium py-2 px-4 rounded-md transition-colors duration-200">
+                        <i class="fas fa-phone-slash mr-2"></i>
+                        <span data-translate="call.end">End Call</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: CallModal -->
+
+    <script>
+        // @STATE: currentLanguage:string = 'en'
+        // @STATE: driverOnline:boolean = false
+        // @STATE: currentRide:object = null
+        // @STATE: rides:array = []
+
+        // WebSocket connection
+        const socket = io();
+        
+        let currentLanguage = 'en';
+        let driverOnline = false;
+        let currentRide = null;
+        let rides = [];
+
+        // Translation object
+        const translations = {
+            en: {
+                'student.title': 'Student Panel',
+                'student.description': 'Request a ride to your destination',
+                'student.pickup': 'Pickup Location',
+                'student.destination': 'Destination',
+                'student.contact': 'Contact Number',
+                'student.request': 'Request Ride',
+                'student.status': 'Your Ride Status',
+                'driver.title': 'Driver Panel',
+                'driver.description': 'View and accept ride requests',
+                'driver.availability': 'Availability Status',
+                'driver.toggle': 'Toggle to receive ride requests',
+                'driver.viewRequests': 'View Ride Requests',
+                'driver.available': 'Available Rides',
+                'driver.waiting': 'Waiting for ride requests...',
+                'activity.title': 'Recent Activity',
+                'activity.empty': 'No recent activity',
+                'call.title': 'Calling...',
+                'call.end': 'End Call'
+            },
+            hi: {
+                'student.title': 'छात्र पैनल',
+                'student.description': 'अपने गंतव्य के लिए राइड का अनुरोध करें',
+                'student.pickup': 'पिकअप स्थान',
+                'student.destination': 'गंतव्य',
+                'student.contact': 'संपर्क नंबर',
+                'student.request': 'राइड का अनुरोध करें',
+                'student.status': 'आपकी राइड की स्थिति',
+                'driver.title': 'ड्राइवर पैनल',
+                'driver.description': 'राइड अनुरोध देखें और स्वीकार करें',
+                'driver.availability': 'उपलब्धता की स्थिति',
+                'driver.toggle': 'राइड अनुरोध प्राप्त करने के लिए टॉगल करें',
+                'driver.viewRequests': 'राइड अनुरोध देखें',
+                'driver.available': 'उपलब्ध राइड्स',
+                'driver.waiting': 'राइड अनुरोधों की प्रतीक्षा कर रहे हैं...',
+                'activity.title': 'हाल की गतिविधि',
+                'activity.empty': 'कोई हाल की गतिविधि नहीं',
+                'call.title': 'कॉल कर रहे हैं...',
+                'call.end': 'कॉल समाप्त करें'
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('languageSelect').addEventListener('change', changeLanguage);
+            updateTranslations();
+        });
+
+        function changeLanguage() {
+            currentLanguage = document.getElementById('languageSelect').value;
+            updateTranslations();
+        }
+
+        function updateTranslations() {
+            const elements = document.querySelectorAll('[data-translate]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-translate');
+                if (translations[currentLanguage] && translations[currentLanguage][key]) {
+                    element.textContent = translations[currentLanguage][key];
+                }
+            });
+        }
+
+        function requestRide() {
+            const pickup = document.getElementById('pickupLocation').value;
+            const destination = document.getElementById('destination').value;
+            const contact = document.getElementById('studentContact').value;
+
+            if (!pickup || !destination || !contact) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // TODO: Implement actual ride request API call
+            fetch('/request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    pickup: pickup,
+                    destination: destination,
+                    contact: contact
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                currentRide = data;
+                displayStudentRideStatus(data);
+                addActivityEntry(`Ride requested: ${data.student}`, 'info');
+            })
+            .catch(err => {
+                // Simulate ride request for demo
+                const ride = {
+                    id: Date.now(),
+                    student: 'Student_' + Math.floor(Math.random() * 1000),
+                    pickup: pickup,
+                    destination: destination,
+                    contact: contact,
+                    status: 'waiting',
+                    fare: Math.floor(Math.random() * 50) + 50,
+                    distance: (Math.random() * 10 + 1).toFixed(1) + ' km',
+                    duration: Math.floor(Math.random() * 20 + 5) + ' min'
+                };
+                
+                currentRide = ride;
+                rides.push(ride);
+                displayStudentRideStatus(ride);
+                updateRideRequests();
+                addActivityEntry(`Ride requested: ${ride.student}`, 'info');
+            });
+        }
+
+        function displayStudentRideStatus(ride) {
+            const statusDiv = document.getElementById('studentRideStatus');
+            const infoDiv = document.getElementById('currentRideInfo');
+            
+            statusDiv.classList.remove('hidden');
+            
+            const statusBadge = getStatusBadge(ride.status);
+            
+            infoDiv.innerHTML = `
+                <div class="flex items-center justify-between p-4 bg-muted rounded-md">
+                    <div>
+                        <h4 class="font-medium text-foreground">Ride #${ride.id}</h4>
+                        <p class="text-sm text-muted-foreground">${ride.pickup} → ${ride.destination}</p>
+                    </div>
+                    ${statusBadge}
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-3 bg-secondary rounded-md">
+                        <p class="text-sm font-medium text-secondary-foreground">Fare</p>
+                        <p class="text-lg font-bold text-primary">₹${ride.fare}</p>
+                    </div>
+                    <div class="p-3 bg-secondary rounded-md">
+                        <p class="text-sm font-medium text-secondary-foreground">Distance</p>
+                        <p class="text-lg font-bold text-foreground">${ride.distance}</p>
+                    </div>
+                </div>
+
+                ${ride.driver ? `
+                <div class="p-4 bg-accent rounded-md">
+                    <h5 class="font-medium text-accent-foreground mb-2">Driver Information</h5>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium">${ride.driver.name}</p>
+                            <p class="text-sm text-muted-foreground">${ride.driver.vehicle}</p>
+                        </div>
+                        <button onclick="makeCall('${ride.driver.phone}')" class="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md">
+                            <i class="fas fa-phone mr-2"></i>Call
+                        </button>
+                    </div>
+                </div>
+                ` : ''}
+            `;
+        }
+
+        function loadRideRequests() {
+            // TODO: Load actual ride requests from API
+            updateRideRequests();
+        }
+
+        function updateRideRequests() {
+            const container = document.getElementById('rideRequests');
+            const countBadge = document.getElementById('rideCount');
+            
+            const availableRides = rides.filter(ride => ride.status === 'waiting');
+            countBadge.textContent = availableRides.length;
+            
+            if (availableRides.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center text-muted-foreground">
+                        <i class="fas fa-hourglass-half text-2xl mb-2"></i>
+                        <p>Waiting for ride requests...</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = availableRides.map(ride => `
+                <div class="p-4 ride-card-animation" data-ride-id="${ride.id}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <h4 class="font-medium text-foreground">${ride.student}</h4>
+                                ${getStatusBadge(ride.status)}
+                            </div>
+                            
+                            <div class="space-y-1 text-sm text-muted-foreground mb-3">
+                                <div class="flex items-center">
+                                    <i class="fas fa-map-marker-alt text-primary w-4"></i>
+                                    <span class="ml-2">${ride.pickup}</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-flag-checkered text-destructive w-4"></i>
+                                    <span class="ml-2">${ride.destination}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-4 text-sm">
+                                <span class="flex items-center text-primary font-medium">
+                                    <i class="fas fa-rupee-sign mr-1"></i>${ride.fare}
+                                </span>
+                                <span class="flex items-center text-muted-foreground">
+                                    <i class="fas fa-route mr-1"></i>${ride.distance || '2.5 km'}
+                                </span>
+                                <span class="flex items-center text-muted-foreground">
+                                    <i class="fas fa-clock mr-1"></i>${ride.duration || '8 min'}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col space-y-2 ml-4">
+                            <button onclick="acceptRide(${ride.id})" 
+                                    class="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                                Accept
+                            </button>
+                            <button onclick="makeCall('${ride.contact}')" 
+                                    class="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200">
+                                <i class="fas fa-phone"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function acceptRide(rideId) {
+            // TODO: Implement actual ride acceptance API call
+            fetch(`/accept/${rideId}`)
+            .then(res => res.json())
+            .then(data => {
+                updateRideStatus(rideId, 'accepted');
+                addActivityEntry(`Ride accepted: #${rideId}`, 'success');
+            })
+            .catch(err => {
+                // Simulate ride acceptance for demo
+                updateRideStatus(rideId, 'accepted');
+                addActivityEntry(`Ride accepted: #${rideId}`, 'success');
+            });
+        }
+
+        function updateRideStatus(rideId, status) {
+            const ride = rides.find(r => r.id == rideId);
+            if (ride) {
+                ride.status = status;
+                if (status === 'accepted') {
+                    ride.driver = {
+                        name: 'Driver_' + Math.floor(Math.random() * 100),
+                        phone: '+91 ' + Math.floor(Math.random() * 9000000000 + 1000000000),
+                        vehicle: 'KA 01 AB ' + Math.floor(Math.random() * 9000 + 1000)
+                    };
+                }
+                
+                if (currentRide && currentRide.id == rideId) {
+                    currentRide = ride;
+                    displayStudentRideStatus(ride);
+                }
+                
+                updateRideRequests();
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                waiting: '<span class="px-2 py-1 text-xs font-medium rounded-full status-waiting">Waiting</span>',
+                accepted: '<span class="px-2 py-1 text-xs font-medium rounded-full status-accepted">Accepted</span>',
+                completed: '<span class="px-2 py-1 text-xs font-medium rounded-full status-completed">Completed</span>',
+                cancelled: '<span class="px-2 py-1 text-xs font-medium rounded-full status-cancelled">Cancelled</span>'
+            };
+            return badges[status] || badges.waiting;
+        }
+
+        function makeCall(phoneNumber) {
+            document.getElementById('callModalNumber').textContent = phoneNumber;
+            document.getElementById('callModal').classList.remove('hidden');
+            
+            // TODO: Integrate with Twilio for actual calling
+            addActivityEntry(`Call initiated to ${phoneNumber}`, 'info');
+        }
+
+        function endCall() {
+            document.getElementById('callModal').classList.add('hidden');
+            addActivityEntry('Call ended', 'info');
+        }
+
+        function toggleDriverStatus() {
+            driverOnline = document.getElementById('driverStatus').checked;
+            const status = driverOnline ? 'Online' : 'Offline';
+            addActivityEntry(`Driver status: ${status}`, 'info');
+        }
+
+        function addActivityEntry(message, type = 'info') {
+            const feed = document.getElementById('activityFeed');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const icons = {
+                info: 'fas fa-info-circle text-blue-500',
+                success: 'fas fa-check-circle text-green-500',
+                error: 'fas fa-exclamation-circle text-red-500'
+            };
+            
+            const entry = document.createElement('div');
+            entry.className = 'p-4 flex items-start space-x-3 ride-card-animation';
+            entry.innerHTML = `
+                <i class="${icons[type]}"></i>
+                <div class="flex-1">
+                    <p class="text-sm text-foreground">${message}</p>
+                    <p class="text-xs text-muted-foreground">${timestamp}</p>
+                </div>
+            `;
+            
+            // Remove empty state
+            if (feed.children.length === 1 && feed.textContent.includes('No recent activity')) {
+                feed.innerHTML = '';
+            }
+            
+            feed.insertBefore(entry, feed.firstChild);
+            
+            // Keep only last 5 activities
+            while (feed.children.length > 5) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        // WebSocket event handlers
+        socket.on('newRide', (ride) => {
+            rides.push(ride);
+            updateRideRequests();
+            addActivityEntry(`New ride request from ${ride.student}`, 'info');
+        });
+
+        socket.on('rideUpdated', (updatedRide) => {
+            const index = rides.findIndex(r => r.id === updatedRide.id);
+            if (index !== -1) {
+                rides[index] = updatedRide;
+                updateRideRequests();
+                
+                if (currentRide && currentRide.id === updatedRide.id) {
+                    currentRide = updatedRide;
+                    displayStudentRideStatus(updatedRide);
+                }
+            }
+        });
+
+        socket.on('connect', () => {
+            document.getElementById('connectionStatus').textContent = 'Connected';
+            addActivityEntry('Connected to server', 'success');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connectionStatus').textContent = 'Disconnected';
+            addActivityEntry('Disconnected from server', 'error');
+        });
+
+        // Initialize with some demo data
+        (() => {
+            addActivityEntry('Application started', 'info');
+        })();
+    </script>
+</body>
+</html>
